@@ -1,0 +1,26 @@
+fastapi==0.115.6
+uvicorn==0.34.0
+langgraph==0.2.60
+langchain==0.3.14
+langchain-huggingface==0.1.2
+supabase==2.11.0
+python-dotenv==1.0.1
+pydantic==2.10.4
+httpx==0.28.1
+python-multipart==0.0.20
+langchain-text-splitters==0.3.8
+pypdf==5.1.0
+python-docx==1.1.2
+langchain-community==0.3.14
+asyncpg==0.31.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+aiosmtplib==3.0.1
+
+# Twitter Scraping Options
+# Apify (RELIABLE - paid but stable, officially supported)
+apify-client>=1.7.0
+
+# Twikit (FREE - scrapes X directly, may break) - OPTIONAL
+# twikit>=2.0.0
