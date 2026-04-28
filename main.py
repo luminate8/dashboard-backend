@@ -9,7 +9,9 @@ from app.routers import sessions, chat, documents, doc_chat, auth
 from app.routers import learning as learning_router
 from app.models.schemas import FeedbackRequest
 from app.services.learning_service import learning_service
+from dotenv import load_dotenv
 
+load_dotenv()
 bearer_scheme = HTTPBearer()
 
 
@@ -63,11 +65,11 @@ app.include_router(documents.router, dependencies=[Depends(require_auth)])
 app.include_router(learning_router.router, dependencies=[Depends(require_admin)])
 
 
-# Feedback: requires auth (registered users only), not admin
+# Only negative feedback goes to the learning queue for admin review
 @app.post("/api/learning/feedback", tags=["learning"], dependencies=[Depends(require_auth)])
 async def submit_feedback_public(request: FeedbackRequest):
     if request.feedback == "negative":
-        await learning_service.mark_negative(request)
+        await learning_service.add_to_queue(request)
     return {"status": "success", "message": "Feedback submitted"}
 
 
