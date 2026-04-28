@@ -1,3 +1,4 @@
+import asyncio
 import aiosmtplib
 from email.mime.text import MIMEText
 from app.config import settings
@@ -26,12 +27,21 @@ async def send_otp_email(to_email: str, otp: str, purpose: str = "signup"):
     msg["From"] = settings.SMTP_FROM
     msg["To"] = to_email
 
-    await aiosmtplib.send(
-        msg,
-        hostname=settings.SMTP_HOST,
-        port=settings.SMTP_PORT,
-        username=settings.SMTP_USER,
-        password=settings.SMTP_PASS,
-        use_tls=False,
-        start_tls=True,
+    # port 465 = direct SSL, port 587 = STARTTLS
+    use_ssl = settings.SMTP_PORT == 465
+
+    print(f"[EMAIL] {settings.SMTP_HOST}:{settings.SMTP_PORT} use_tls={use_ssl} → {to_email}")
+
+    await asyncio.wait_for(
+        aiosmtplib.send(
+            msg,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASS,
+            use_tls=use_ssl,
+            start_tls=not use_ssl,
+        ),
+        timeout=20,
     )
+    print(f"[EMAIL] Sent OK → {to_email}")
