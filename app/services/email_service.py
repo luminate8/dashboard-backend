@@ -1,4 +1,5 @@
 import asyncio
+import ssl
 import aiosmtplib
 from email.mime.text import MIMEText
 from app.config import settings
@@ -22,15 +23,18 @@ async def send_otp_email(to_email: str, otp: str, purpose: str = "signup"):
   <p style="color:#9ca3af;font-size:12px;">Expires in 10 minutes.</p>
 </div>"""
 
-    msg = MIMEText(body, "html")
+    msg = MIMEText(body, "html", "utf-8")
     msg["Subject"] = subject
     msg["From"] = settings.SMTP_FROM
     msg["To"] = to_email
 
-    # port 465 = direct SSL, port 587 = STARTTLS
     use_ssl = settings.SMTP_PORT == 465
 
-    print(f"[EMAIL] {settings.SMTP_HOST}:{settings.SMTP_PORT} use_tls={use_ssl} → {to_email}")
+    tls_context = ssl.create_default_context()
+    tls_context.check_hostname = False
+    tls_context.verify_mode = ssl.CERT_NONE
+
+    print(f"[EMAIL] {settings.SMTP_HOST}:{settings.SMTP_PORT} use_tls={use_ssl} to {to_email}")
 
     await asyncio.wait_for(
         aiosmtplib.send(
@@ -41,7 +45,8 @@ async def send_otp_email(to_email: str, otp: str, purpose: str = "signup"):
             password=settings.SMTP_PASS,
             use_tls=use_ssl,
             start_tls=not use_ssl,
+            tls_context=tls_context,
         ),
         timeout=20,
     )
-    print(f"[EMAIL] Sent OK → {to_email}")
+    print(f"[EMAIL] Sent OK to {to_email}")
