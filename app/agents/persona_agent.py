@@ -4,6 +4,8 @@ from app.services.llm_service import HuggingFaceLLM
 from app.services.session_service import save_message, get_chat_history
 from app.services.tweet_service import fetch_celebrity_tweets
 from app.services.profile_service import get_multiple_celebrity_profiles
+from app.utils.relational_framework import get_relational_system_prompt
+
 
 
 class AgentState(TypedDict):
@@ -58,7 +60,7 @@ IMPORTANT RULES:
 
 Respond to the user as {persona_names} would."""
 
-    return prompt
+    return prompt + "\n" + get_relational_system_prompt()
 
 
 async def fetch_profiles_node(state: AgentState) -> dict:

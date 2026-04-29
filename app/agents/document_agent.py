@@ -14,43 +14,43 @@ class KetamineAgentState(TypedDict):
     sources: list[str]
 
 
-MEDICAL_DISCLAIMER = "\n\n---\n*Disclaimer: This is not medical advice. Please consult with a healthcare professional.*"
-
-def _strip_disclaimer(text: str) -> str:
-    return text.replace(MEDICAL_DISCLAIMER, "").strip()
-
+# Only genuine crisis language triggers the safety response
 SAFETY_KEYWORDS = [
     "suicide", "kill myself", "harm myself", "end my life",
     "want to die", "commit suicide", "self-harm"
 ]
 
 EMERGENCY_RESPONSE = (
-    "I'm concerned about what you're sharing. If you're feeling overwhelmed or considering self-harm, "
-    "please reach out for help immediately. You can call or text 988 in the US and Canada to reach "
-    "the Suicide & Crisis Lifeline, or contact your local emergency services. You are not alone."
+    "I hear you. If you're at a point where you're thinking about ending your life or harming yourself, "
+    "please call or text 988 right now. That's the Suicide & Crisis Lifeline — available 24/7. "
+    "You don't have to be alone in this."
 )
 
 
 def _build_ketamine_system_prompt(chunks: list[dict]) -> str:
     if chunks:
-        doc_context = "\n\n--- RELEVANT KETAMINE THERAPY CONTEXT ---\n"
+        doc_context = "\n\n--- KNOWLEDGE BASE ---\n"
         for chunk in chunks:
             source = chunk.get('file_name', 'Unknown Source')
             doc_context += f"\nSOURCE: {source}\nCONTENT: {chunk['content']}\n"
     else:
-        doc_context = "\n\n(No relevant ketamine therapy information found in the knowledge base.)"
+        doc_context = ""
 
-    return f"""You are a ketamine therapy assistant. Your role is to provide information based ONLY on the provided documents.
+    return f"""You are a knowledgeable ketamine therapy guide. You engage with depth, directness, and genuine presence.
 
-{doc_context}
+How you respond:
+- Think carefully before answering. Your responses reflect real consideration, not reflexive replies.
+- When someone shares something emotional or personal, acknowledge it briefly and directly — then engage with substance. Do not dwell in sympathy or pivot to generic wellness advice.
+- Never say "I'm sorry to hear that" or "It's important to take care of your mental health." That is not your role here.
+- Treat the person as intelligent and capable. Do not over-explain or hedge unnecessarily.
+- Speak with confidence. If you don't know something, say so plainly — don't fill the gap with filler.
+- You are not a crisis counselor. You are a guide. Stay in that role unless someone is in genuine danger.
 
-STRICT RULES:
-1. ONLY answer from the provided context.
-2. If the answer is not in the context, say "I don't know."
-3. Do not make assumptions or add follow-up suggestions.
-4. Do not provide general medical advice outside the documents.
-5. Be professional, empathetic, and concise.
-"""
+How you use your knowledge:
+- Draw from the documents provided when relevant. Cite the source naturally if it adds value.
+- If the documents don't cover the question, engage from your understanding of ketamine therapy and say so clearly.
+- Connect ideas. Offer perspective. Go beyond surface-level answers when the question deserves it.
+{doc_context}"""
 
 
 async def safety_check_node(state: KetamineAgentState) -> dict:
@@ -60,12 +60,8 @@ async def safety_check_node(state: KetamineAgentState) -> dict:
 
 
 async def fetch_ketamine_docs_node(state: KetamineAgentState) -> dict:
-    """Fetch relevant document chunks using vectorized search."""
     if state.get("safety_triggered"):
         return {"documents": []}
-
-    print(f"Searching for relevant chunks for query: '{state['user_message']}'")
-    # Search for the top 5 most relevant chunks
     chunks = await document_service.search_relevant_chunks(state["user_message"], limit=5)
     print(f"Found {len(chunks)} relevant chunks.")
     return {"documents": chunks}
@@ -73,7 +69,7 @@ async def fetch_ketamine_docs_node(state: KetamineAgentState) -> dict:
 
 async def generate_ketamine_reply_node(state: KetamineAgentState) -> dict:
     if state.get("safety_triggered"):
-        return {"assistant_reply": EMERGENCY_RESPONSE}
+        return {"assistant_reply": EMERGENCY_RESPONSE, "sources": []}
 
     llm = HuggingFaceLLM()
     system_prompt = _build_ketamine_system_prompt(state["documents"])
@@ -86,7 +82,7 @@ async def generate_ketamine_reply_node(state: KetamineAgentState) -> dict:
     reply = await llm.generate(messages)
 
     if not reply or "error" in reply.lower():
-        reply = "I'm sorry, I'm having trouble accessing my knowledge base right now."
+        reply = "I'm having trouble accessing my knowledge base right now. Try again in a moment."
 
     sources = list({c.get("file_name", "") for c in state["documents"] if c.get("file_name")})
     return {"assistant_reply": reply, "sources": sources}
@@ -94,7 +90,7 @@ async def generate_ketamine_reply_node(state: KetamineAgentState) -> dict:
 
 async def save_ketamine_messages_node(state: KetamineAgentState) -> dict:
     await save_message(state["session_id"], "user", state["user_message"])
-    await save_message(state["session_id"], "assistant", _strip_disclaimer(state["assistant_reply"]))
+    await save_message(state["session_id"], "assistant", state["assistant_reply"])
     return {}
 
 
