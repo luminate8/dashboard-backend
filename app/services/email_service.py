@@ -1,7 +1,4 @@
-import asyncio
-import ssl
-import aiosmtplib
-from email.mime.text import MIMEText
+import httpx
 from app.config import settings
 
 
@@ -23,30 +20,16 @@ async def send_otp_email(to_email: str, otp: str, purpose: str = "signup"):
   <p style="color:#9ca3af;font-size:12px;">Expires in 10 minutes.</p>
 </div>"""
 
-    msg = MIMEText(body, "html", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = settings.SMTP_FROM
-    msg["To"] = to_email
-
-    use_ssl = settings.SMTP_PORT == 465
-
-    tls_context = ssl.create_default_context()
-    tls_context.check_hostname = False
-    tls_context.verify_mode = ssl.CERT_NONE
-
-    print(f"[EMAIL] {settings.SMTP_HOST}:{settings.SMTP_PORT} use_tls={use_ssl} to {to_email}")
-
-    await asyncio.wait_for(
-        aiosmtplib.send(
-            msg,
-            hostname=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USER,
-            password=settings.SMTP_PASS,
-            use_tls=use_ssl,
-            start_tls=not use_ssl,
-            tls_context=tls_context,
-        ),
-        timeout=20,
-    )
-    print(f"[EMAIL] Sent OK to {to_email}")
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"https://api.mailgun.net/v3/{settings.MAILGUN_DOMAIN}/messages",
+            auth=("api", settings.MAILGUN_API_KEY),
+            data={
+                "from": settings.MAILGUN_FROM,
+                "to": to_email,
+                "subject": subject,
+                "html": body,
+            },
+        )
+        response.raise_for_status()
+        print(f"[EMAIL] Sent OK to {to_email}")
