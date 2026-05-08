@@ -52,11 +52,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Public routes (auth endpoints only)
+# Public routes
 app.include_router(auth.router)
+app.include_router(doc_chat.router)
 
 # All other routes require auth
-app.include_router(doc_chat.router, dependencies=[Depends(require_auth)])
 app.include_router(sessions.router, dependencies=[Depends(require_auth)])
 app.include_router(chat.router, dependencies=[Depends(require_auth)])
 app.include_router(documents.router, dependencies=[Depends(require_auth)])
